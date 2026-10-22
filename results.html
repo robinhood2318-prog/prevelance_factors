@@ -69,11 +69,10 @@
   </div>
   <div class="side">
     <div class="count" id="count">0</div>
-    <div class="countlab">responses</div>
+    <div class="countlab">participants</div>
     <div id="qr"></div>
-    <div class="scan"><b>Scan to play</b></div>
-    <div class="link" id="link"></div>
-    <div class="avg"><b id="avg">–</b><span>average score out of 13</span></div>
+    <div class="scan"><b>Scan to enter your response</b></div>
+    <div class="avg"><b id="avg">–</b><span>class score out of 13</span></div>
     <div class="ctrl">
       <button id="reveal">Reveal answers (R)</button>
       <button id="clear">Clear responses</button>
@@ -84,7 +83,7 @@
 <script>
 // Paste the same Google Apps Script web-app URL you used in index.html
 const API_URL = "https://script.google.com/macros/s/AKfycbyYcjy0bbmzIFCsWJyMAPPb6gIqctWsTNDql0GpOA_TdTVEzMBu_LrWeYURTtLig7QHwQ/exec";
-const REFRESH_MS = 3000;
+const REFRESH_MS = 2000;
 
 const ITEMS = [
   {t:"Longer duration of disease", a:"up"},
@@ -109,7 +108,6 @@ const DEMO = params.has('demo');
 
 // game link = index.html in the same folder as this page
 const gameUrl = new URL('./', location.href).href;
-document.getElementById('link').textContent = gameUrl.replace(/^https?:\/\//,'');
 try {
   const q = qrcode(0, 'M'); q.addData(gameUrl); q.make();
   document.getElementById('qr').innerHTML = q.createSvgTag({cellSize: 8, margin: 0, scalable: true});
@@ -120,18 +118,22 @@ DISPLAY.forEach(i => {
   const it = ITEMS[i], r = document.createElement('div');
   r.className = 'row'; r.id = 'r'+i;
   r.innerHTML = `<div class="lab">${it.t}</div>
-    <div class="bar"><div class="seg u" style="width:0%"></div><div class="seg d" style="width:0%;margin-left:auto"></div></div>
+    <div class="bar"><div class="seg u" style="width:0%;padding:0"></div><div class="seg d" style="width:0%;padding:0;margin-left:auto"></div></div>
     <div class="ans ${it.a==='up'?'u':'d'}">${it.a==='up'?'↑':'↓'}</div>`;
   rowsBox.appendChild(r);
 });
 
 function draw(d){
   document.getElementById('count').textContent = d.n;
-  document.getElementById('avg').textContent = d.n ? d.avgScore.toFixed(1) : '–';
+  // class score = sum over items of the share of votes that were correct (works for partial answers too)
+  let acc = 0, any = false;
+  ITEMS.forEach((it, i) => { const t = d.up[i] + d.dn[i]; if(t){ any = true; acc += (it.a==='up' ? d.up[i] : d.dn[i]) / t; } });
+  document.getElementById('avg').textContent = any ? acc.toFixed(1) : '–';
   ITEMS.forEach((it, i) => {
     const tot = d.up[i] + d.dn[i], pu = tot ? Math.round(100*d.up[i]/tot) : 0, pd = tot ? 100-pu : 0;
     const r = document.getElementById('r'+i), su = r.querySelector('.seg.u'), sd = r.querySelector('.seg.d');
     su.style.width = pu + '%'; sd.style.width = pd + '%';
+    su.style.padding = pu ? '' : '0'; sd.style.padding = pd ? '' : '0';
     su.textContent = pu >= 8 ? pu + '%' : ''; sd.textContent = pd >= 8 ? pd + '%' : '';
     const majority = d.up[i] >= d.dn[i] ? 'up' : 'dn';
     r.classList.toggle('ok', tot > 0 && majority === it.a);

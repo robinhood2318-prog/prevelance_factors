@@ -127,6 +127,7 @@ function pick(e){
   const card = document.getElementById('c'+i);
   card.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v));
   update();
+  queueSend();   // live update: send this tap to the class screen
 }
 function update(){
   const n = Object.keys(answers).length;
@@ -159,13 +160,26 @@ function participantId(){
   }
   return id;
 }
+// Each send carries the participant's full current set of answers, so a lost or
+// late request is corrected by the next one. Taps are grouped for ~1.2 s to keep the load on Google low.
+let sendTimer = null;
+function queueSend(){
+  clearTimeout(sendTimer);
+  sendTimer = setTimeout(() => post(null), 1200);
+}
+function post(score){
+  if(!API_URL || API_URL.indexOf('http') !== 0) return Promise.resolve();
+  const ans = {}; ITEMS.forEach((_, i) => ans[i] = answers[i] || '');
+  return fetch(API_URL, {method:'POST', mode:'no-cors', keepalive:true,
+                  headers:{'Content-Type':'text/plain;charset=utf-8'},
+                  body: JSON.stringify({sid: participantId(), answers: ans, score: score})});
+}
 function send(score){
+  clearTimeout(sendTimer);
   const st = document.getElementById('sent');
   if(!API_URL || API_URL.indexOf('http') !== 0){ st.textContent = ''; return; }
   st.textContent = 'Sending your answers to the class results…';
-  const ans = {}; ITEMS.forEach((_, i) => ans[i] = answers[i]);
-  fetch(API_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'},
-                  body: JSON.stringify({sid: participantId(), answers: ans, score: score})})
+  post(score)
     .then(() => { st.textContent = '✓ Your answers are on the class screen.'; })
     .catch(() => { st.textContent = 'Could not send your answers – check your connection.'; });
 }
