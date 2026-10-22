@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live results – What changes prevalence?</title>
+<script src="qrcode.js"></script>
+<style>
+  :root{
+    --teal:#4495A2; --teal-d:#2F6F7A; --teal-l:#E1F0F2;
+    --green:#7CA655; --green-d:#4E7A2E; --green-l:#EAF2E2;
+    --yellow:#F9D448; --yellow-l:#FDF4CC;
+    --coral:#E06742; --coral-d:#9C3A1C; --coral-l:#FBE8E1;
+    --ink:#1F2A30; --gray:#5F6B70; --line:#E3E8EA;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:#fff;color:var(--ink);overflow:hidden;
+       font-family:"Franklin Gothic Book","Segoe UI",Arial,sans-serif}
+  .wrap{height:100vh;display:grid;grid-template-columns:1fr minmax(180px,22vw);gap:2.2vw;padding:3vh 3vw 2.5vh}
+  .deco1{position:fixed;right:-6vh;top:-6vh;width:14vh;height:14vh;background:var(--yellow);transform:rotate(45deg);z-index:0}
+  .deco2{position:fixed;right:-3vh;bottom:-3vh;width:10vh;height:10vh;background:var(--green);transform:rotate(45deg);z-index:0}
+  .main{display:flex;flex-direction:column;min-height:0;position:relative;z-index:1}
+  h1{font-family:"Franklin Gothic Demi","Segoe UI",Arial,sans-serif;font-weight:800;margin:0;font-size:5.2vh;line-height:1.05}
+  .bar0{width:9vw;height:.8vh;background:var(--green-d);margin:1.2vh 0 1.4vh}
+  .legend{display:flex;gap:2vw;font-size:2.1vh;color:var(--gray);margin-bottom:1.2vh}
+  .legend span::before{content:"";display:inline-block;width:1.6vh;height:1.6vh;border-radius:.3vh;margin-right:.6vh;vertical-align:-.2vh}
+  .legend .u::before{background:var(--teal)} .legend .d::before{background:var(--coral)}
+  .rows{flex:1;display:grid;grid-template-rows:repeat(13,1fr);gap:.55vh;min-height:0}
+  .row{display:grid;grid-template-columns:34% 1fr 9vh;align-items:center;gap:1vw;border-radius:.8vh;padding:0 .8vw;transition:background .4s}
+  .row .lab{font-size:2.15vh;line-height:1.1}
+  .row .bar{height:62%;display:flex;border-radius:.6vh;overflow:hidden;background:#F1F4F5}
+  .seg{display:flex;align-items:center;font-weight:700;font-size:1.9vh;color:#fff;white-space:nowrap;overflow:hidden;
+       transition:width .8s ease}
+  .seg.u{background:var(--teal);justify-content:flex-start;padding-left:.6vw}
+  .seg.d{background:var(--coral);justify-content:flex-end;padding-right:.6vw}
+  .row .ans{font-size:1.9vh;font-weight:800;text-align:center;border-radius:.6vh;padding:.4vh 0;visibility:hidden}
+  .revealed .row .ans{visibility:visible}
+  .ans.u{background:var(--teal-l);color:var(--teal-d)} .ans.d{background:var(--coral-l);color:var(--coral-d)}
+  .revealed .row.ok{background:var(--green-l)} .revealed .row.bad{background:var(--yellow-l)}
+  .side{display:flex;flex-direction:column;align-items:center;gap:1.6vh;position:relative;z-index:1;padding-top:1vh}
+  .count{font-family:"Franklin Gothic Demi","Segoe UI",Arial,sans-serif;font-size:9vh;font-weight:800;color:var(--teal-d);line-height:1}
+  .countlab{font-size:2.2vh;color:var(--gray);margin-top:-1vh}
+  #qr{background:#fff;padding:1vh;border-radius:1vh;box-shadow:0 .3vh 1.2vh rgba(0,0,0,.12)}
+  #qr svg{width:18vh;height:18vh;display:block}
+  .scan{font-size:2vh;text-align:center;color:var(--ink)}
+  .link{font-size:1.4vh;color:var(--gray);word-break:break-all;text-align:center}
+  .avg{display:none;text-align:center;background:var(--teal-l);border-radius:1vh;padding:1.2vh 1vw;width:100%}
+  .revealed .avg{display:block}
+  .avg b{display:block;font-size:4.2vh;color:var(--teal-d)}
+  .avg span{font-size:1.8vh;color:var(--gray)}
+  .ctrl{margin-top:auto;display:flex;flex-direction:column;gap:.8vh;width:100%}
+  .ctrl button{border:0;border-radius:.8vh;padding:1.2vh;font-size:1.9vh;font-weight:700;cursor:pointer;font-family:inherit}
+  #reveal{background:var(--teal-d);color:#fff} #clear{background:#F1F4F5;color:var(--gray)}
+  .status{font-size:1.4vh;color:var(--gray);text-align:center;min-height:1.6vh}
+  .paradox{display:none;margin-top:1vh;background:var(--yellow-l);border-radius:.8vh;padding:1vh 1vw;font-size:2vh}
+  .revealed .paradox{display:block}
+</style>
+</head>
+<body>
+<div class="deco1"></div><div class="deco2"></div>
+<div class="wrap" id="wrap">
+  <div class="main">
+    <h1>What changes prevalence? – live class results</h1>
+    <div class="bar0"></div>
+    <div class="legend"><span class="u">% said it <b>increases</b> prevalence</span><span class="d">% said it <b>decreases</b> prevalence</span></div>
+    <div class="rows" id="rows"></div>
+    <div class="paradox"><b>The paradox:</b> a treatment that prevents death but does not cure (insulin, ART) <b>raises</b> prevalence – remember P = I × D.</div>
+  </div>
+  <div class="side">
+    <div class="count" id="count">0</div>
+    <div class="countlab">responses</div>
+    <div id="qr"></div>
+    <div class="scan"><b>Scan to play</b></div>
+    <div class="link" id="link"></div>
+    <div class="avg"><b id="avg">–</b><span>average score out of 13</span></div>
+    <div class="ctrl">
+      <button id="reveal">Reveal answers (R)</button>
+      <button id="clear">Clear responses</button>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+</div>
+<script>
+// Paste the same Google Apps Script web-app URL you used in index.html
+const API_URL = "https://script.google.com/macros/s/AKfycbyYcjy0bbmzIFCsWJyMAPPb6gIqctWsTNDql0GpOA_TdTVEzMBu_LrWeYURTtLig7QHwQ/exec";
+const REFRESH_MS = 3000;
+
+const ITEMS = [
+  {t:"Longer duration of disease", a:"up"},
+  {t:"Prolongation of life without cure (ART, insulin)", a:"up"},
+  {t:"Increase in new cases (incidence)", a:"up"},
+  {t:"In-migration of cases", a:"up"},
+  {t:"In-migration of susceptible people", a:"up"},
+  {t:"Out-migration of healthy people", a:"up"},
+  {t:"Better diagnosis and reporting", a:"up"},
+  {t:"Shorter duration of disease", a:"dn"},
+  {t:"High case-fatality rate", a:"dn"},
+  {t:"Decrease in new cases (incidence)", a:"dn"},
+  {t:"In-migration of healthy people", a:"dn"},
+  {t:"Out-migration of cases", a:"dn"},
+  {t:"Improved cure rate", a:"dn"}
+];
+// Display order mixes the two groups so the answer is not obvious before the reveal
+const DISPLAY = [12,1,7,5,9,3,10,0,8,6,11,4,2];
+
+const params = new URLSearchParams(location.search);
+const DEMO = params.has('demo');
+
+// game link = index.html in the same folder as this page
+const gameUrl = new URL('./', location.href).href;
+document.getElementById('link').textContent = gameUrl.replace(/^https?:\/\//,'');
+try {
+  const q = qrcode(0, 'M'); q.addData(gameUrl); q.make();
+  document.getElementById('qr').innerHTML = q.createSvgTag({cellSize: 8, margin: 0, scalable: true});
+} catch(e) { document.getElementById('qr').textContent = 'QR unavailable'; }
+
+const rowsBox = document.getElementById('rows');
+DISPLAY.forEach(i => {
+  const it = ITEMS[i], r = document.createElement('div');
+  r.className = 'row'; r.id = 'r'+i;
+  r.innerHTML = `<div class="lab">${it.t}</div>
+    <div class="bar"><div class="seg u" style="width:0%"></div><div class="seg d" style="width:0%;margin-left:auto"></div></div>
+    <div class="ans ${it.a==='up'?'u':'d'}">${it.a==='up'?'↑':'↓'}</div>`;
+  rowsBox.appendChild(r);
+});
+
+function draw(d){
+  document.getElementById('count').textContent = d.n;
+  document.getElementById('avg').textContent = d.n ? d.avgScore.toFixed(1) : '–';
+  ITEMS.forEach((it, i) => {
+    const tot = d.up[i] + d.dn[i], pu = tot ? Math.round(100*d.up[i]/tot) : 0, pd = tot ? 100-pu : 0;
+    const r = document.getElementById('r'+i), su = r.querySelector('.seg.u'), sd = r.querySelector('.seg.d');
+    su.style.width = pu + '%'; sd.style.width = pd + '%';
+    su.textContent = pu >= 8 ? pu + '%' : ''; sd.textContent = pd >= 8 ? pd + '%' : '';
+    const majority = d.up[i] >= d.dn[i] ? 'up' : 'dn';
+    r.classList.toggle('ok', tot > 0 && majority === it.a);
+    r.classList.toggle('bad', tot > 0 && majority !== it.a);
+  });
+}
+
+let demoN = 0;
+function demoData(){
+  demoN = Math.min(demoN + 3, 42);
+  const truth = [.85,.55,.9,.8,.6,.45,.4,.9,.7,.92,.75,.82,.88];
+  const up = [], dn = [];
+  ITEMS.forEach((it, i) => {
+    const pc = truth[i]; const c = Math.round(demoN*pc);
+    if(it.a==='up'){ up.push(c); dn.push(demoN-c); } else { dn.push(c); up.push(demoN-c); }
+  });
+  return {ok:true, n:demoN, up, dn, avgScore:10.4};
+}
+
+async function refresh(){
+  const st = document.getElementById('status');
+  if(DEMO){ draw(demoData()); st.textContent = 'Demo data'; return; }
+  if(!API_URL || API_URL.indexOf('http') !== 0){ st.textContent = 'Add your Apps Script URL to results.html'; return; }
+  try{
+    const res = await fetch(API_URL + '?t=' + Date.now());
+    const d = await res.json();
+    if(d.ok){ draw(d); st.textContent = 'Live · updated ' + new Date().toLocaleTimeString(); }
+  }catch(e){ st.textContent = 'Waiting for connection…'; }
+}
+
+function toggleReveal(){
+  const w = document.getElementById('wrap');
+  w.classList.toggle('revealed');
+  document.getElementById('reveal').textContent = w.classList.contains('revealed') ? 'Hide answers (R)' : 'Reveal answers (R)';
+}
+document.getElementById('reveal').addEventListener('click', toggleReveal);
+document.addEventListener('keydown', e => { if(e.key === 'r' || e.key === 'R') toggleReveal(); });
+
+// Clearing needs ?key=YOUR_ADMIN_KEY in this page's address
+document.getElementById('clear').addEventListener('click', async () => {
+  const st = document.getElementById('status'), key = params.get('key');
+  if(DEMO){ demoN = 0; refresh(); return; }
+  if(!key){ st.textContent = 'Open this page with ?key=YOUR_ADMIN_KEY to clear'; return; }
+  try{
+    const d = await (await fetch(API_URL + '?action=reset&key=' + encodeURIComponent(key))).json();
+    st.textContent = d.ok ? 'Responses cleared' : 'Wrong key';
+    refresh();
+  }catch(e){ st.textContent = 'Could not clear'; }
+});
+
+refresh();
+setInterval(refresh, DEMO ? 1500 : REFRESH_MS);
+</script>
+</body>
+</html>

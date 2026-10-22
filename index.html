@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What changes prevalence?</title>
+<style>
+  :root{
+    --teal:#4495A2; --teal-d:#2F6F7A; --teal-l:#E1F0F2;
+    --green:#7CA655; --green-d:#4E7A2E;
+    --yellow:#F9D448; --yellow-l:#FDF4CC;
+    --coral:#E06742; --coral-d:#9C3A1C; --coral-l:#FBE8E1;
+    --ink:#1F2A30; --gray:#5F6B70; --line:#D5DDE0; --bg:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Franklin Gothic Book","Segoe UI",Arial,sans-serif;line-height:1.35}
+  header{position:relative;overflow:hidden;padding:28px 16px 18px}
+  header .deco1{position:absolute;right:-30px;top:-30px;width:120px;height:120px;background:var(--yellow);transform:rotate(45deg)}
+  header .deco2{position:absolute;right:30px;top:40px;width:26px;height:140px;background:var(--teal);transform:rotate(-45deg)}
+  h1{font-family:"Franklin Gothic Demi","Segoe UI",Arial,sans-serif;font-weight:800;font-size:clamp(26px,6vw,40px);
+     margin:0 0 10px;position:relative;max-width:75%}
+  .bar{width:110px;height:6px;background:var(--green-d);margin-bottom:12px}
+  .lead{color:var(--gray);margin:0;max-width:min(640px,78%);position:relative}
+  main{max-width:900px;margin:0 auto;padding:0 16px 40px}
+  .progress{font-size:14px;color:var(--gray);margin:14px 0 10px}
+  .cards{display:grid;gap:10px}
+  .card{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:#fff;transition:background .2s,border-color .2s}
+  .card .txt{font-size:17px;margin-bottom:10px}
+  .btns{display:flex;gap:8px}
+  .btns button{flex:1;border:2px solid var(--teal);background:#fff;color:var(--teal-d);border-radius:10px;
+       padding:10px 6px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btns button.dn{border-color:var(--coral);color:var(--coral-d)}
+  .btns button.sel.up{background:var(--teal);color:#fff}
+  .btns button.sel.dn{background:var(--coral);color:#fff}
+  .card.right{border-color:var(--green);background:#EEF5E8}
+  .card.wrong{border-color:var(--coral);background:var(--coral-l)}
+  .why{display:none;font-size:14px;color:var(--ink);margin-top:8px}
+  .card.right .why,.card.wrong .why{display:block}
+  .mark{font-weight:800;margin-right:4px}
+  .actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .actions button{border:0;border-radius:10px;padding:13px 20px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+  #check{background:var(--teal-d);color:#fff;flex:1}
+  #check:disabled{background:#AFC2C6;cursor:not-allowed}
+  #reset{background:var(--teal-l);color:var(--teal-d)}
+  #result{display:none;margin-top:20px}
+  .score{font-family:"Franklin Gothic Demi","Segoe UI",Arial,sans-serif;font-size:30px;font-weight:800;color:var(--teal-d)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .col{border-radius:12px;padding:14px}
+  .col.up{background:var(--teal-l)} .col.dn{background:var(--coral-l)}
+  .col h3{margin:0 0 8px;font-size:18px}
+  .col.up h3{color:var(--teal-d)} .col.dn h3{color:var(--coral-d)}
+  .col ul{margin:0;padding-left:18px;font-size:15px}
+  .paradox{margin-top:14px;background:var(--yellow-l);border-radius:12px;padding:14px;font-size:16px}
+  .src{font-size:12px;color:var(--gray);margin-top:16px;font-style:italic}
+  @media (max-width:600px){.cols{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="deco1"></div><div class="deco2"></div>
+  <h1>What changes prevalence?</h1>
+  <div class="bar"></div>
+  <p class="lead">For each factor, tap whether it <b>increases ↑</b> or <b>decreases ↓</b> the prevalence of a disease in a community. Then press <b>Check my answers</b>.</p>
+</header>
+<main>
+  <div class="progress" id="progress"></div>
+  <div class="cards" id="cards"></div>
+  <div class="actions">
+    <button id="check" disabled>Check my answers</button>
+    <button id="reset">Start again</button>
+  </div>
+  <section id="result">
+    <div class="score" id="score"></div>
+    <div id="sent" style="font-size:14px;color:var(--green-d);margin-top:4px"></div>
+    <div class="cols">
+      <div class="col up"><h3>↑ Increases prevalence</h3><ul id="listUp"></ul></div>
+      <div class="col dn"><h3>↓ Decreases prevalence</h3><ul id="listDn"></ul></div>
+    </div>
+    <div class="paradox"><b>The paradox:</b> a treatment that prevents death but does not cure (insulin, ART) <b>raises</b> prevalence. Remember <b>P = I × D</b>: anything that adds new cases or lengthens the time people live with the disease increases prevalence.</div>
+    <div class="src">Based on Bonita R, Beaglehole R, Kjellström T. Basic Epidemiology, 2nd ed. WHO; 2006 and Park's Textbook of PSM, 27th ed. (2023).</div>
+  </section>
+</main>
+<script>
+// Google Apps Script web-app URL
+const API_URL = "https://script.google.com/macros/s/AKfycbyYcjy0bbmzIFCsWJyMAPPb6gIqctWsTNDql0GpOA_TdTVEzMBu_LrWeYURTtLig7QHwQ/exec";
+
+const ITEMS = [
+  {t:"Longer duration of disease", a:"up", why:"People stay in the ‘pool’ of cases for longer (P = I × D)."},
+  {t:"Prolongation of life without cure (e.g. ART, insulin)", a:"up", why:"Patients survive but are not cured, so cases accumulate."},
+  {t:"Increase in new cases (incidence)", a:"up", why:"More cases flow into the pool."},
+  {t:"In-migration of cases", a:"up", why:"Existing cases are added to the community."},
+  {t:"In-migration of susceptible people", a:"up", why:"More people at risk means more new cases."},
+  {t:"Out-migration of healthy people", a:"up", why:"The denominator shrinks while cases stay, so the proportion rises."},
+  {t:"Better diagnosis and reporting", a:"up", why:"Cases that were hidden are now counted."},
+  {t:"Shorter duration of disease", a:"dn", why:"People leave the pool sooner."},
+  {t:"High case-fatality rate", a:"dn", why:"Patients die quickly, so fewer remain as cases."},
+  {t:"Decrease in new cases (incidence)", a:"dn", why:"Less inflow into the pool."},
+  {t:"In-migration of healthy people", a:"dn", why:"The denominator grows without adding cases."},
+  {t:"Out-migration of cases", a:"dn", why:"Cases leave the community."},
+  {t:"Improved cure rate", a:"dn", why:"Patients recover and leave the pool."}
+];
+let order = [], answers = {}, checked = false;
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function render(){
+  const box = document.getElementById('cards'); box.innerHTML = '';
+  order.forEach(idx => {
+    const it = ITEMS[idx], c = document.createElement('div');
+    c.className = 'card'; c.id = 'c'+idx;
+    c.innerHTML = `<div class="txt">${it.t}</div>
+      <div class="btns">
+        <button class="up" data-i="${idx}" data-v="up">↑ Increases</button>
+        <button class="dn" data-i="${idx}" data-v="dn">↓ Decreases</button>
+      </div>
+      <div class="why"></div>`;
+    box.appendChild(c);
+  });
+  box.querySelectorAll('button').forEach(b => b.addEventListener('click', pick));
+  update();
+}
+function pick(e){
+  if(checked) return;
+  const i = e.currentTarget.dataset.i, v = e.currentTarget.dataset.v;
+  answers[i] = v;
+  const card = document.getElementById('c'+i);
+  card.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === v));
+  update();
+}
+function update(){
+  const n = Object.keys(answers).length;
+  document.getElementById('progress').textContent = `${n} of ${ITEMS.length} sorted`;
+  document.getElementById('check').disabled = n < ITEMS.length || checked;
+}
+function check(){
+  checked = true; let score = 0;
+  order.forEach(idx => {
+    const it = ITEMS[idx], card = document.getElementById('c'+idx), ok = answers[idx] === it.a;
+    if(ok) score++;
+    card.classList.add(ok ? 'right' : 'wrong');
+    card.querySelector('.why').innerHTML =
+      `<span class="mark">${ok ? '✓ Correct.' : '✗ It ' + (it.a==='up'?'increases':'decreases') + ' prevalence.'}</span>${it.why}`;
+  });
+  document.getElementById('score').textContent = `You scored ${score} / ${ITEMS.length}`;
+  document.getElementById('listUp').innerHTML = ITEMS.filter(x=>x.a==='up').map(x=>`<li>${x.t}</li>`).join('');
+  document.getElementById('listDn').innerHTML = ITEMS.filter(x=>x.a==='dn').map(x=>`<li>${x.t}</li>`).join('');
+  document.getElementById('result').style.display = 'block';
+  send(score);
+  update();
+  document.getElementById('result').scrollIntoView({behavior:'smooth'});
+}
+function participantId(){
+  let id = null;
+  try { id = localStorage.getItem('prevSortId'); } catch(e) {}
+  if(!id){
+    id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { localStorage.setItem('prevSortId', id); } catch(e) {}
+  }
+  return id;
+}
+function send(score){
+  const st = document.getElementById('sent');
+  if(!API_URL || API_URL.indexOf('http') !== 0){ st.textContent = ''; return; }
+  st.textContent = 'Sending your answers to the class results…';
+  const ans = {}; ITEMS.forEach((_, i) => ans[i] = answers[i]);
+  fetch(API_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'},
+                  body: JSON.stringify({sid: participantId(), answers: ans, score: score})})
+    .then(() => { st.textContent = '✓ Your answers are on the class screen.'; })
+    .catch(() => { st.textContent = 'Could not send your answers – check your connection.'; });
+}
+function reset(){
+  checked = false; answers = {};
+  order = shuffle(ITEMS.map((_,i)=>i));
+  document.getElementById('result').style.display = 'none';
+  render(); window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('check').addEventListener('click', check);
+document.getElementById('reset').addEventListener('click', reset);
+reset();
+</script>
+</body>
+</html>
